@@ -11,30 +11,36 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 )
 
+func initS3Uploader(cfg *config.Config) (*s3manager.Uploader, error) {
+	sess, err := session.NewSession(&aws.Config{
+		Region:           aws.String(cfg.AwsRegion),
+		Credentials:      credentials.NewStaticCredentials(cfg.AwsAccessKey, cfg.AwsSecretKey, ""),
+		Endpoint:         aws.String(cfg.Endpoint),
+		S3ForcePathStyle: aws.Bool(true),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create AWS session: %w", err)
+	}
+
+	uploader := s3manager.NewUploader(sess)
+	return uploader, nil
+}
+
 func main() {
-	config, err := config.LoadConfig("config/config.json")
+	cfg, err := config.LoadConfig("config/config.json")
 	if err != nil {
 		fmt.Println("Ошибка чтения конфигурации:", err)
 		return
 	}
 
-	// Конфигурация доступа к AWS
-	sess, err := session.NewSession(&aws.Config{
-		Region:           aws.String(config.AwsRegion),
-		Credentials:      credentials.NewStaticCredentials(config.AwsAccessKey, config.AwsSecretKey, ""),
-		Endpoint:         aws.String(config.Endpoint), // Установка кастомной конечной точки
-		S3ForcePathStyle: aws.Bool(true),              // Важно для некоторых S3-совместимых провайдеров
-	})
+	uploader, err := initS3Uploader(cfg)
 	if err != nil {
-		fmt.Println("Ошибка создания сессии:", err)
+		fmt.Println(err)
 		return
 	}
 
-	// Создание uploader
-	uploader := s3manager.NewUploader(sess)
-
 	// Открываем файл
-	file, err := os.Open(config.FilePath)
+	file, err := os.Open(cfg.FilePath)
 	if err != nil {
 		fmt.Println("Ошибка открытия файла:", err)
 		return
@@ -43,8 +49,8 @@ func main() {
 
 	// Загрузка файла
 	_, err = uploader.Upload(&s3manager.UploadInput{
-		Bucket: aws.String(config.BucketName),
-		Key:    aws.String(config.KeyPath),
+		Bucket: aws.String(cfg.BucketName),
+		Key:    aws.String(cfg.KeyPath),
 		Body:   file,
 	})
 	if err != nil {
