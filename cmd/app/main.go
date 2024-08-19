@@ -1,9 +1,9 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
+	"s3backuper/internal/config"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -11,34 +11,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 )
 
-type Config struct {
-	AwsRegion    string `json:"awsRegion"`
-	AwsAccessKey string `json:"awsAccessKey"`
-	AwsSecretKey string `json:"awsSecretKey"`
-	BucketName   string `json:"bucketName"`
-	FilePath     string `json:"filePath"`
-	KeyPath      string `json:"keyPath"`
-	Endpoint     string `json:"endpoint"`
-}
-
-func loadConfig(path string) (*Config, error) {
-	file, err := os.Open(path)
-	if err != nil {
-		return nil, err
-	}
-	defer file.Close()
-
-	decoder := json.NewDecoder(file)
-	config := &Config{}
-	err = decoder.Decode(config)
-	if err != nil {
-		return nil, err
-	}
-	return config, nil
-}
-
 func main() {
-	config, err := loadConfig("config/config.json")
+	config, err := config.LoadConfig("config/config.json")
 	if err != nil {
 		fmt.Println("Ошибка чтения конфигурации:", err)
 		return
